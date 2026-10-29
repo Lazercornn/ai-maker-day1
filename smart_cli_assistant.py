@@ -1,4 +1,3 @@
-
 import os
 
 from dotenv import load_dotenv
@@ -19,8 +18,8 @@ if not api_key:
     raise RuntimeError("Не найден GEMINI_API_KEY в файле .env")
 
 # Создаём клиента Gemini и консоль для вывода.
-client = genai.Client(api_key=api_key)
 console = Console()
+
 
 # Показываем название приложения.
 def show_welcome():
@@ -32,8 +31,9 @@ def show_welcome():
             border_style="blue",
         )
     )
-    
-# Собираем строки до команды END.    
+
+
+# Собираем строки до команды END.
 def get_text():
     # Создаём пустой список для хранения строк
     lines = []
@@ -50,12 +50,25 @@ def get_text():
     # Объединяем строки и возвращаем результат
     return "\n".join(lines).strip()
 
+
 # Просим вставить текст для анализа.
 def analyze_text(analysis_type, text):
     """Отправляет текст в Gemini и возвращает ответ."""
     try:
         console.print("[yellow]Отправляю текст в Gemini...[/]")
 
+        # Загружаем настройки из файла окружения.
+        load_dotenv()
+
+        # Получаем ключ API из окружения.
+        api_key = os.getenv("GEMINI_API_KEY")
+
+        if not api_key:
+            console.print("[red]Не найден GEMINI_API_KEY в файле .env[/]")
+            raise SystemExit(1)
+
+        # Создаём клиента Gemini.
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model="gemini-3.5-flash-lite",
             contents=(
@@ -75,10 +88,9 @@ def analyze_text(analysis_type, text):
         return response.text
 
     except APIError as error:
-        console.print(
-            f"[red]Не удалось получить ответ от Gemini: {error}[/]"
-        )
+        console.print(f"[red]Не удалось получить ответ от Gemini: {error}[/]")
         raise SystemExit(1)
+
 
 # Выводим результат анализа.
 def show_result(analysis_type, result):
@@ -94,6 +106,15 @@ def show_result(analysis_type, result):
 
     console.print(table)
 
+
+def validate_text(text):
+    if not text:
+        raise ValueError("Текст не должен быть пустым.")
+
+    if len(text) > 10000:
+        raise ValueError("Текст слишком длинный. Максимальная длина 10000 символов.")
+
+
 def main():
     show_welcome()
 
@@ -108,8 +129,10 @@ def main():
 
     text = get_text()
 
-    if not text:
-        console.print("[red]Текст не должен быть пустым.[/]")
+    try:
+        validate_text(text)
+    except ValueError as error:
+        console.print(f"[red]{error}[/]")
         raise SystemExit(1)
 
     result = analyze_text(analysis_type, text)
